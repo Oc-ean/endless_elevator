@@ -4,7 +4,7 @@ import { createRandomObstacle } from '@/types/obstacles'
 export class ShaftGenerator {
   private segmentIdCounter = 0
   private obstacleIdCounter = 0
-  private segmentHeight = 500
+  private segmentHeight = 550 
   private seed = Date.now()
 
   constructor(seed?: number) {
@@ -19,26 +19,29 @@ export class ShaftGenerator {
       passed: false,
     }
 
-    // Determine number of obstacles based on difficulty
-    const obstacleCount = Math.floor(1 + difficulty * 1.5) // Reduced from 2 + difficulty * 2
-const minSpacing = 150 
-    // FIXED: Generate obstacles WITHIN the segment going UPWARD
-    // Since we're going up, obstacles should be spaced within this segment
+    const obstacleCount = Math.floor(1 + Math.min(difficulty * 1.2, 4))
+    const minSpacing = 180 
+
     for (let i = 0; i < obstacleCount; i++) {
-      // Obstacles positioned within the segment (yPosition to yPosition + segmentHeight)
-      const obstacleY = yPosition + minSpacing + (i * (this.segmentHeight - minSpacing * 2) / Math.max(obstacleCount, 1))
+      const segmentProgress = i / Math.max(obstacleCount - 1, 1)
+      const obstacleY = yPosition + minSpacing + (segmentProgress * (this.segmentHeight - minSpacing * 2))
       
-      // Random chance to skip obstacle for variety
-      if (Math.random() > 0.25 + difficulty * 0.15) {
+      if (Math.random() > 0.15 + difficulty * 0.1) {
         const obstacle = createRandomObstacle(
           `obstacle-${this.obstacleIdCounter++}`,
           obstacleY,
           difficulty
         )
+        
         const tooClose = segment.obstacles.some(existing => {
           const horizontalDist = Math.abs(existing.position.x - obstacle.position.x)
           const verticalDist = Math.abs(existing.position.y - obstacle.position.y)
-          return horizontalDist < 80 && verticalDist < 120
+          
+          if (obstacle.size.width > 100 || existing.size.width > 100) {
+            return horizontalDist < 120 && verticalDist < 140
+          }
+          
+          return horizontalDist < 90 && verticalDist < 130
         })
         
         if (!tooClose) {
@@ -46,16 +49,25 @@ const minSpacing = 150
         }
       }
     }
+    
+    if (segment.obstacles.length === 0 && difficulty > 0.2) {
+      const midY = yPosition + this.segmentHeight / 2
+      segment.obstacles.push(
+        createRandomObstacle(
+          `obstacle-${this.obstacleIdCounter++}`,
+          midY,
+          difficulty * 0.7 
+        )
+      )
+    }
 
     return segment
   }
 
-  // FIXED: Generate initial segments going UPWARD (decreasing Y for segments above)
-   generateInitialSegments(count: number, startY: number = 0): ShaftSegment[] {
+  generateInitialSegments(count: number, startY: number = 0): ShaftSegment[] {
     const segments: ShaftSegment[] = []
     for (let i = 0; i < count; i++) {
-      // Start with lower difficulty for initial segments
-      const initialDifficulty = Math.min(i * 0.1, 0.3)
+      const initialDifficulty = Math.min(i * 0.08, 0.25)
       segments.push(this.generateSegment(startY - i * this.segmentHeight, initialDifficulty))
     }
     return segments
@@ -77,6 +89,7 @@ const minSpacing = 150
 export class SegmentPool {
   private pool: ShaftSegment[] = []
   private generator: ShaftGenerator
+  private obstacleCounter = 0
 
   constructor() {
     this.generator = new ShaftGenerator()
@@ -89,27 +102,47 @@ export class SegmentPool {
       segment.passed = false
       segment.obstacles = []
       
-      // Regenerate obstacles with proper spacing
-      const obstacleCount = Math.floor(1 + difficulty * 1.5)
+      const obstacleCount = Math.floor(1 + Math.min(difficulty * 1.2, 4))
       const segmentHeight = this.generator.getSegmentHeight()
-      const minSpacing = 120
+      const minSpacing = 180
       
       for (let i = 0; i < obstacleCount; i++) {
-        const obstacleY = yPosition + minSpacing + (i * (segmentHeight - minSpacing * 2) / Math.max(obstacleCount, 1))
+        const segmentProgress = i / Math.max(obstacleCount - 1, 1)
+        const obstacleY = yPosition + minSpacing + (segmentProgress * (segmentHeight - minSpacing * 2))
         
-        if (Math.random() > 0.25 + difficulty * 0.15) {
-          const obstacle = createRandomObstacle(`obstacle-${Date.now()}-${i}`, obstacleY, difficulty)
+        if (Math.random() > 0.15 + difficulty * 0.1) {
+          const obstacle = createRandomObstacle(
+            `obstacle-${Date.now()}-${this.obstacleCounter++}`,
+            obstacleY,
+            difficulty
+          )
           
           const tooClose = segment.obstacles.some(existing => {
             const horizontalDist = Math.abs(existing.position.x - obstacle.position.x)
             const verticalDist = Math.abs(existing.position.y - obstacle.position.y)
-            return horizontalDist < 80 && verticalDist < 120
+            
+            if (obstacle.size.width > 100 || existing.size.width > 100) {
+              return horizontalDist < 120 && verticalDist < 140
+            }
+            
+            return horizontalDist < 90 && verticalDist < 130
           })
           
           if (!tooClose) {
             segment.obstacles.push(obstacle)
           }
         }
+      }
+      
+      if (segment.obstacles.length === 0 && difficulty > 0.2) {
+        const midY = yPosition + segmentHeight / 2
+        segment.obstacles.push(
+          createRandomObstacle(
+            `obstacle-${Date.now()}-${this.obstacleCounter++}`,
+            midY,
+            difficulty * 0.7
+          )
+        )
       }
       
       return segment

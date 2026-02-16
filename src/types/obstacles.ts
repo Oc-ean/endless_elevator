@@ -30,7 +30,6 @@ export class StaticObstacle implements IObstacle {
   }
 
   update(deltaTime: number): void {
-    // Static obstacles don't move
   }
 }
 
@@ -78,10 +77,8 @@ export class DynamicObstacle implements IObstacle {
   update(deltaTime: number): void {
     if (!this.active) return
 
-    // Move the obstacle
     this.position.x += this.velocity.x * this.direction * deltaTime
 
-    // Reverse direction at boundaries
     if (this.position.x >= this.range.max) {
       this.direction = -1
       this.position.x = this.range.max
@@ -149,13 +146,11 @@ export class TimedObstacle implements IObstacle {
 
 export function createRandomObstacle(id: string, yPosition: number, difficulty: number): IObstacle {
   const rand = Math.random()
-  const x = 70 + Math.random() * 260 // Better horizontal positioning
+  const x = 70 + Math.random() * 260 
 
   if (rand < 0.4) {
-    // Static obstacle - SHORTER heights (jumpable)
     const variant = ['debris', 'cable', 'panel'][Math.floor(Math.random() * 3)] as 'debris' | 'cable' | 'panel'
     
-    // FIXED: Much shorter obstacles (15-25px) so player can jump over them
     const height = 15 + Math.random() * 10
     const width = 30 + Math.random() * 50
     
@@ -166,10 +161,8 @@ export function createRandomObstacle(id: string, yPosition: number, difficulty: 
       variant
     )
   } else if (rand < 0.7) {
-    // Dynamic obstacle - SHORTER heights
     const variant = ['piston', 'swinging', 'sliding'][Math.floor(Math.random() * 3)] as 'piston' | 'swinging' | 'sliding'
     
-    // FIXED: Shorter dynamic obstacles
     const height = 20 + Math.random() * 15
     const width = 40 + Math.random() * 20
     
@@ -182,10 +175,8 @@ export function createRandomObstacle(id: string, yPosition: number, difficulty: 
       variant
     )
   } else {
-    // Timed obstacle - LOW height (lasers/spikes from floor)
     const variant = ['spike', 'laser', 'electric'][Math.floor(Math.random() * 3)] as 'spike' | 'laser' | 'electric'
     
-    // FIXED: Very short timed obstacles (10-20px)
     const height = variant === 'laser' ? 8 : 12 + Math.random() * 8
     const width = 50 + Math.random() * 30
     

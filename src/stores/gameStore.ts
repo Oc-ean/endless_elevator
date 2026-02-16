@@ -38,7 +38,7 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const difficulty = ref<DifficultyConfig>({
-    baseSpeed: 100,
+    baseSpeed: 110,
     speedMultiplier: 1.0,
     obstacleFrequency: 1.0,
     eventFrequency: 0.5,
@@ -46,8 +46,11 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const shaftSegments = ref<ShaftSegment[]>([])
-  const elevatorSpeed = ref(100)
+  const elevatorSpeed = ref(110)
   const cameraOffset = ref(0)
+  
+  const segmentDamageTracker = ref<Map<string, boolean>>(new Map())
+  const lastHealthCheck = ref(100)
 
   const currentFloor = computed(() => Math.floor(stats.value.distance / 150))
   const currentSpeed = computed(() => difficulty.value.baseSpeed * difficulty.value.speedMultiplier)
@@ -103,7 +106,7 @@ export const useGameStore = defineStore('game', () => {
     }
 
     difficulty.value = {
-      baseSpeed: 100,
+      baseSpeed: 110,
       speedMultiplier: 1.0,
       obstacleFrequency: 1.0,
       eventFrequency: 0.5,
@@ -111,9 +114,11 @@ export const useGameStore = defineStore('game', () => {
     }
 
     shaftSegments.value = []
-    elevatorSpeed.value = 100
+    elevatorSpeed.value = 110
     cameraOffset.value = 0
     currentEvent.value = null
+    segmentDamageTracker.value.clear()
+    lastHealthCheck.value = 100
   }
 
   function updateStats(deltaTime: number) {
@@ -125,15 +130,22 @@ export const useGameStore = defineStore('game', () => {
 
   function updateDifficulty() {
     const timeScale = Math.min(stats.value.timeAlive / 60, 3)
-    difficulty.value.speedMultiplier = 1.0 + (timeScale * 0.5)
-    difficulty.value.obstacleFrequency = 1.0 + (timeScale * 0.3)
-    difficulty.value.eventFrequency = 0.5 + (timeScale * 0.2)
-    difficulty.value.reactionTime = Math.max(1.0, 2.0 - (timeScale * 0.3))
+    difficulty.value.speedMultiplier = 1.0 + (timeScale * 0.6)
+    difficulty.value.obstacleFrequency = 1.0 + (timeScale * 0.4)
+    difficulty.value.eventFrequency = 0.5 + (timeScale * 0.3)
+    difficulty.value.reactionTime = Math.max(0.8, 2.0 - (timeScale * 0.4)) 
     elevatorSpeed.value = currentSpeed.value
   }
 
   function damagePlayer(amount: number) {
     player.value.health = Math.max(0, player.value.health - amount)
+    
+    shaftSegments.value.forEach(segment => {
+      if (!segment.passed) {
+        segmentDamageTracker.value.set(segment.id, true)
+      }
+    })
+    
     if (player.value.health <= 0) {
       endGame()
     }
@@ -163,6 +175,21 @@ export const useGameStore = defineStore('game', () => {
 
   function addPerfectSegment() {
     stats.value.perfectSegments++
+  }
+  
+  function checkSegmentPerfection(segment: ShaftSegment) {
+    if (segment.passed) return
+    
+    segment.passed = true
+    
+    const hadDamage = segmentDamageTracker.value.get(segment.id)
+    
+    if (!hadDamage && segment.obstacles.length > 0) {
+      addPerfectSegment()
+    }
+    
+    // Clean up old tracking data
+    segmentDamageTracker.value.delete(segment.id)
   }
 
   return {
@@ -194,5 +221,6 @@ export const useGameStore = defineStore('game', () => {
     deactivateEvent,
     addNearMiss,
     addPerfectSegment,
+    checkSegmentPerfection,
   }
 })

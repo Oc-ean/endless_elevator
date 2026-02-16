@@ -8,30 +8,56 @@ export interface CollisionBox {
 }
 
 export class PhysicsEngine {
-  gravity = 1200 
-  friction = 0.85
+  gravity = 1300 
+  friction = 0.86
   jumpForce = -600
   dashSpeed = 350
-  moveSpeed = 200
- airControl = 0.5
+  moveSpeed = 210
+ airControl = 0.6
+
+
+  private jumpBufferTime = 0.14 
+  private coyoteTime = 0.10 
+  private jumpBuffer = 0
+  private coyoteTimer = 0
+  private wasGrounded = false
 
   applyGravity(player: Player, deltaTime: number, groundY: number): void {
-    player.velocity.y += this.gravity * deltaTime
+    if (player.velocity.y < 0 && player.velocity.y > -300) {
+      player.velocity.y += this.gravity * deltaTime * 0.5 
+    } else {
+      player.velocity.y += this.gravity * deltaTime
+    }
 
     player.position.y += player.velocity.y * deltaTime
 
+    const distanceToGround = Math.abs(player.position.y + player.size.height - groundY)
+    const isGrounded = distanceToGround < 10 && player.velocity.y >= 0
 
-        const distanceToGround = Math.abs(player.position.y + player.size.height - groundY)
-
-    if (distanceToGround < 10 && player.velocity.y > 0) {
+    if (isGrounded) {
       player.position.y = groundY - player.size.height
       player.velocity.y = 0
       player.canJump = true
+      this.coyoteTimer = this.coyoteTime
+      this.wasGrounded = true
+    } else {
+      if (this.wasGrounded) {
+        this.coyoteTimer -= deltaTime
+        if (this.coyoteTimer <= 0) {
+          this.wasGrounded = false
+          player.canJump = false
+        }
+      }
+    }
+    
+    // Jump buffer countdown
+    if (this.jumpBuffer > 0) {
+      this.jumpBuffer -= deltaTime
     }
   }
 
   applyHorizontalMovement(player: Player, deltaTime: number, isInAir: boolean = false): void {
-    const currentFriction = isInAir ? 0.92 : this.friction
+    const currentFriction = isInAir ? 0.94 : this.friction
     player.velocity.x *= currentFriction
 
     player.position.x += player.velocity.x * deltaTime
@@ -48,14 +74,26 @@ export class PhysicsEngine {
     }
   }
 
-
-    jump(player: Player): void {
-    if (player.canJump || player.velocity.y >= -100) {
+  jump(player: Player): void {
+    if (!player.canJump && this.coyoteTimer <= 0) {
+      this.jumpBuffer = this.jumpBufferTime
+      return
+    }
+    
+    if (player.canJump || this.coyoteTimer > 0) {
       player.velocity.y = this.jumpForce
       player.canJump = false
+      this.coyoteTimer = 0
+      this.wasGrounded = false
+      this.jumpBuffer = 0
     }
   }
-
+  
+  updateJumpBuffer(player: Player, deltaTime: number): void {
+    if (this.jumpBuffer > 0 && player.canJump) {
+      this.jump(player)
+    }
+  }
 
   dash(player: Player, direction: number): void {
     if (!player.isDashing) {
@@ -71,7 +109,6 @@ export class PhysicsEngine {
   }
 
 moveLeft(player: Player, isInAir: boolean = false): void {
-    // Don't override dash velocity
     if (player.isDashing) return
     
     const speed = isInAir ? this.moveSpeed * this.airControl : this.moveSpeed
@@ -79,14 +116,14 @@ moveLeft(player: Player, isInAir: boolean = false): void {
   }
 
   moveRight(player: Player, isInAir: boolean = false): void {
-    // Don't override dash velocity
     if (player.isDashing) return
     
     const speed = isInAir ? this.moveSpeed * this.airControl : this.moveSpeed
     player.velocity.x = speed
   }
 
- crouch(player: Player, crouching: boolean): void {
+
+  crouch(player: Player, crouching: boolean): void {
     player.isCrouching = crouching
     if (crouching) {
       const originalHeight = 70
@@ -94,6 +131,9 @@ moveLeft(player: Player, isInAir: boolean = false): void {
       const heightDiff = originalHeight - crouchHeight
       player.size.height = crouchHeight
       player.position.y += heightDiff
+      if (player.velocity.y > 0) {
+        player.velocity.y *= 1.3
+      }
     } else {
       const originalHeight = 70
       const currentHeight = player.size.height
@@ -103,6 +143,7 @@ moveLeft(player: Player, isInAir: boolean = false): void {
     }
   }
 }
+
 
 
 export class CollisionDetector {
@@ -120,7 +161,7 @@ export class CollisionDetector {
     const dy = (ellipseCenterY - closestY) / radiusY
 
   
-    const baseMargin = 0.65
+    const baseMargin = 0.7
     return (dx * dx + dy * dy) < (baseMargin * baseMargin)
 
   }
@@ -140,16 +181,16 @@ export class CollisionDetector {
     radiusX: number
     radiusY: number 
   } {
-    let hitboxMargin = 12 // Base margin
+    let hitboxMargin = 12 
     
-    if (player.velocity.y < -200) { 
+    if (player.velocity.y < -250) { 
       hitboxMargin = 16
-    } else if (player.velocity.y < 0) { 
-      hitboxMargin = 14
+    } else if (player.velocity.y < -100) { 
+      hitboxMargin = 16
     }
     
     if (player.isCrouching) {
-      hitboxMargin += 6
+      hitboxMargin += 8
     }
     
     return {
@@ -190,17 +231,17 @@ export class CollisionDetector {
     const obstacleBottom = obstacle.position.y + obstacle.size.height
     
 
-    if (player.velocity.y < -200) {
-      if (playerBottom < obstacleTop + 25) {
+    if (player.velocity.y < -230) {
+      if (playerBottom < obstacleTop + 28) {
         return false 
       }
       
-      if (playerTop < obstacleBottom - obstacle.size.height * 0.3) {
+      if (playerTop < obstacleBottom - obstacle.size.height * 0.4) {
         return false 
       }
     }
     
-    if (player.velocity.y < 0 && obstacle.size.height < 30) {
+    if (player.velocity.y < -100 && obstacle.size.height < 35) {
       const verticalClearance = obstacleTop - playerBottom
       if (verticalClearance > -15) { 
         return false

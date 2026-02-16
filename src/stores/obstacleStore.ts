@@ -30,7 +30,6 @@ export class StaticObstacle implements IObstacle {
   }
 
   update(deltaTime: number): void {
-    // Static obstacles don't move
   }
 }
 
@@ -78,10 +77,8 @@ export class DynamicObstacle implements IObstacle {
   update(deltaTime: number): void {
     if (!this.active) return
 
-    // Move the obstacle
     this.position.x += this.velocity.x * this.direction * deltaTime
 
-    // Reverse direction at boundaries
     if (this.position.x >= this.range.max) {
       this.direction = -1
       this.position.x = this.range.max
@@ -160,7 +157,6 @@ export function createRandomObstacle(id: string, yPosition: number, difficulty: 
       variant
     )
   } else if (rand < 0.7) {
-    //  obstacle
     const variant = ['piston', 'swinging', 'sliding'][Math.floor(Math.random() * 3)] as 'piston' | 'swinging' | 'sliding'
     return new DynamicObstacle(
       id,
