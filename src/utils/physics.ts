@@ -13,7 +13,7 @@ export class PhysicsEngine {
   jumpForce = -600
   dashSpeed = 350
   moveSpeed = 210
- airControl = 0.6
+  airControl = 0.6
 
 
   private jumpBufferTime = 0.14 

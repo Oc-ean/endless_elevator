@@ -11,7 +11,7 @@ export const drawPlayer = (ctx : CanvasRenderingContext2D, player: Player) => {
     const isSmallMobile = window.innerWidth < 480
     
     // Adjust player scale for different screen sizes
-    const basePlayerScale = isSmallMobile ? 0.7 : isMobile ? 0.75 : 0.85
+    const basePlayerScale = isSmallMobile ? 0.7 : isMobile ? 0.75 : 0.75
     const playerScale = basePlayerScale
 
     const rawX = player.position.x
