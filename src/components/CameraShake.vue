@@ -57,7 +57,6 @@ const handleCameraShake = (event: CustomEvent<ShakeConfig>) => {
 onMounted(() => {
     window.addEventListener('camera-shake', handleCameraShake as EventListener);
 
-    // Test shake on mount (remove in production)
     setTimeout(() => {
         window.dispatchEvent(new CustomEvent('camera-shake', {
             detail: { intensity: 0.5, duration: 500 }
@@ -71,7 +70,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Add some performance optimizations */
 :deep(*) {
     transform: translateZ(0);
     backface-visibility: hidden;
